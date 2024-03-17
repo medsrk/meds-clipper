@@ -11,6 +11,11 @@ service ClipboardService {
 
   // Retrieves the clipboard history.
   rpc GetClipboardHistory(GetRequest) returns (GetReply) {}
+
+  // Server streaming RPC to get clipboard updates.
+  rpc SubscribeClipboardUpdates(SubscriberRequest) returns (stream ClipboardUpdate) {}
+
+  rpc NotifyClipboardUpdate(NotifyRequest) returns (NotifyReply) {}
 }
 
 // The request message containing the clipboard item.
@@ -29,4 +34,20 @@ message GetRequest {}
 // The response message containing the clipboard history.
 message GetReply {
   repeated string items = 1;
+}
+
+// The request message for streaming clipboard updates.
+message SubscriberRequest {}
+
+// The response message containing the clipboard update.
+message ClipboardUpdate {
+  repeated string items = 1;
+}
+
+// The request message for notifying clipboard updates.
+message NotifyRequest {}
+
+// The response message containing a confirmation of the notification.
+message NotifyReply {
+  bool success = 1;
 }

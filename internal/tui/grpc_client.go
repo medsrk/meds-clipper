@@ -5,7 +5,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
-	"meds-clip/internal/pb"
+	"meds-clipper/internal/pb"
 	"time"
 )
 

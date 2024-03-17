@@ -2,7 +2,7 @@ package main
 
 import (
 	"log"
-	"meds-clip/internal/tui"
+	"meds-clipper/internal/tui"
 
 	"github.com/charmbracelet/bubbletea"
 )

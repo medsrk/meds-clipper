@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ClipboardService_SaveClipboardItem_FullMethodName   = "/clipboard.ClipboardService/SaveClipboardItem"
-	ClipboardService_GetClipboardHistory_FullMethodName = "/clipboard.ClipboardService/GetClipboardHistory"
+	ClipboardService_SaveClipboardItem_FullMethodName         = "/clipboard.ClipboardService/SaveClipboardItem"
+	ClipboardService_GetClipboardHistory_FullMethodName       = "/clipboard.ClipboardService/GetClipboardHistory"
+	ClipboardService_SubscribeClipboardUpdates_FullMethodName = "/clipboard.ClipboardService/SubscribeClipboardUpdates"
+	ClipboardService_NotifyClipboardUpdate_FullMethodName     = "/clipboard.ClipboardService/NotifyClipboardUpdate"
 )
 
 // ClipboardServiceClient is the client API for ClipboardService service.
@@ -31,6 +33,9 @@ type ClipboardServiceClient interface {
 	SaveClipboardItem(ctx context.Context, in *SaveRequest, opts ...grpc.CallOption) (*SaveReply, error)
 	// Retrieves the clipboard history.
 	GetClipboardHistory(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetReply, error)
+	// Server streaming RPC to get clipboard updates.
+	SubscribeClipboardUpdates(ctx context.Context, in *SubscriberRequest, opts ...grpc.CallOption) (ClipboardService_SubscribeClipboardUpdatesClient, error)
+	NotifyClipboardUpdate(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error)
 }
 
 type clipboardServiceClient struct {
@@ -59,6 +64,47 @@ func (c *clipboardServiceClient) GetClipboardHistory(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *clipboardServiceClient) SubscribeClipboardUpdates(ctx context.Context, in *SubscriberRequest, opts ...grpc.CallOption) (ClipboardService_SubscribeClipboardUpdatesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ClipboardService_ServiceDesc.Streams[0], ClipboardService_SubscribeClipboardUpdates_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &clipboardServiceSubscribeClipboardUpdatesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ClipboardService_SubscribeClipboardUpdatesClient interface {
+	Recv() (*ClipboardUpdate, error)
+	grpc.ClientStream
+}
+
+type clipboardServiceSubscribeClipboardUpdatesClient struct {
+	grpc.ClientStream
+}
+
+func (x *clipboardServiceSubscribeClipboardUpdatesClient) Recv() (*ClipboardUpdate, error) {
+	m := new(ClipboardUpdate)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *clipboardServiceClient) NotifyClipboardUpdate(ctx context.Context, in *NotifyRequest, opts ...grpc.CallOption) (*NotifyReply, error) {
+	out := new(NotifyReply)
+	err := c.cc.Invoke(ctx, ClipboardService_NotifyClipboardUpdate_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ClipboardServiceServer is the server API for ClipboardService service.
 // All implementations must embed UnimplementedClipboardServiceServer
 // for forward compatibility
@@ -67,6 +113,9 @@ type ClipboardServiceServer interface {
 	SaveClipboardItem(context.Context, *SaveRequest) (*SaveReply, error)
 	// Retrieves the clipboard history.
 	GetClipboardHistory(context.Context, *GetRequest) (*GetReply, error)
+	// Server streaming RPC to get clipboard updates.
+	SubscribeClipboardUpdates(*SubscriberRequest, ClipboardService_SubscribeClipboardUpdatesServer) error
+	NotifyClipboardUpdate(context.Context, *NotifyRequest) (*NotifyReply, error)
 	mustEmbedUnimplementedClipboardServiceServer()
 }
 
@@ -79,6 +128,12 @@ func (UnimplementedClipboardServiceServer) SaveClipboardItem(context.Context, *S
 }
 func (UnimplementedClipboardServiceServer) GetClipboardHistory(context.Context, *GetRequest) (*GetReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetClipboardHistory not implemented")
+}
+func (UnimplementedClipboardServiceServer) SubscribeClipboardUpdates(*SubscriberRequest, ClipboardService_SubscribeClipboardUpdatesServer) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeClipboardUpdates not implemented")
+}
+func (UnimplementedClipboardServiceServer) NotifyClipboardUpdate(context.Context, *NotifyRequest) (*NotifyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NotifyClipboardUpdate not implemented")
 }
 func (UnimplementedClipboardServiceServer) mustEmbedUnimplementedClipboardServiceServer() {}
 
@@ -129,6 +184,45 @@ func _ClipboardService_GetClipboardHistory_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClipboardService_SubscribeClipboardUpdates_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscriberRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ClipboardServiceServer).SubscribeClipboardUpdates(m, &clipboardServiceSubscribeClipboardUpdatesServer{stream})
+}
+
+type ClipboardService_SubscribeClipboardUpdatesServer interface {
+	Send(*ClipboardUpdate) error
+	grpc.ServerStream
+}
+
+type clipboardServiceSubscribeClipboardUpdatesServer struct {
+	grpc.ServerStream
+}
+
+func (x *clipboardServiceSubscribeClipboardUpdatesServer) Send(m *ClipboardUpdate) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _ClipboardService_NotifyClipboardUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NotifyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClipboardServiceServer).NotifyClipboardUpdate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClipboardService_NotifyClipboardUpdate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClipboardServiceServer).NotifyClipboardUpdate(ctx, req.(*NotifyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ClipboardService_ServiceDesc is the grpc.ServiceDesc for ClipboardService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -144,7 +238,17 @@ var ClipboardService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetClipboardHistory",
 			Handler:    _ClipboardService_GetClipboardHistory_Handler,
 		},
+		{
+			MethodName: "NotifyClipboardUpdate",
+			Handler:    _ClipboardService_NotifyClipboardUpdate_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SubscribeClipboardUpdates",
+			Handler:       _ClipboardService_SubscribeClipboardUpdates_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/clipboard.proto",
 }
