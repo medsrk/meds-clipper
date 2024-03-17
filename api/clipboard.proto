@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package clipboard;
+
+option go_package = "internal/pb";
+
+// The clipboard service definition.
+service ClipboardService {
+  // Sends a new clipboard item to be saved.
+  rpc SaveClipboardItem(SaveRequest) returns (SaveReply) {}
+
+  // Retrieves the clipboard history.
+  rpc GetClipboardHistory(GetRequest) returns (GetReply) {}
+}
+
+// The request message containing the clipboard item.
+message SaveRequest {
+  string item = 1;
+}
+
+// The response message containing a confirmation of the save.
+message SaveReply {
+  bool success = 1;
+}
+
+// The request message for getting the clipboard history.
+message GetRequest {}
+
+// The response message containing the clipboard history.
+message GetReply {
+  repeated string items = 1;
+}
